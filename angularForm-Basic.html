@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+   <style type="text/css">
+      table, th , td  {
+        border: 1px solid grey;
+        border-collapse: collapse;
+        padding: 5px;
+        margin: 5px;
+      }
+      table tr:nth-child(odd) {
+        background-color: #f1f1f1;
+      }
+      table tr:nth-child(even) {
+        background-color: #ffffff;
+      }
+      .add-user-btn {
+         float:right;
+      }
+   </style>
+   <head>
+      <script src = "https://ajax.googleapis.com/ajax/libs/angularjs/1.5.2/angular.min.js"></script>
+      <script src="https://rawgithub.com/gsklee/ngStorage/master/ngStorage.js"></script>
+   </head>
+   
+   <body ng-app = "myapp">
+      
+      <div ng-controller = "AppController" >
+         <h3>{{ title }}</h3>
+         <input type="text" placeholder="filter" ng-model="nameFilter" />
+         <br /><br />
+          <div>
+              <span ng-disabled="currentPage === 0">
+                  <a href ng-click="currentPage=currentPage-1"><< Previous Users</a>
+              </span>
+              <span>Showing {{currentUser}} - {{currentPage+1 * 10}} of {{details.length}} users</span> 
+              <span ng-disabled="showNextPage()">
+                  <a href ng-click="currentPage=currentPage + 1">Next Users >></a>
+              </span>
+              <button class="add-user-btn" ng-click="addUser()">Add User</button>
+         </div>
+         <div>
+            <table ng-show="showTable">
+               <thead>
+                  <th ng-click="sortRow('Last Name')">Last Name&nbsp;</th>
+                  <th ng-click="sortRow('First Name')">First Name&nbsp;</th>
+                  <th ng-click="sortRow('Age')">Age&nbsp;</th>
+                  <th ng-click="sortRow('Email')">Email&nbsp;</th>
+                  <th ng-click="sortRow('Created On')">Created On&nbsp;</th>
+                  <th ng-click="sortRow('Last Edited')">Last Edited&nbsp;</th>
+                  <th>Active&nbsp;</th>
+                  <form name="userForm" ng-submit="submitForm()">
+                     <tr id="createUser" ng-show="isFormDisplayed">
+                        <td><input type="text" name="lastName" ng-model="lastName" ng-init="lastName=''" placeholder="Enter a Last Name" required></td>
+                        <td><input type="text" name="firstName" ng-model="firstName" ng-init="firstName=''" placeholder="Enter a First Name"  required></td>
+                        <td><input type="text" name="age" ng-model="age" ng-init="age=''" placeholder="Age"></td>
+                        <td><input type="email" name="input" ng-model="email" ng-init="email=''"placeholder="email@yourdomain.com"  required></td>
+                        <td></td>
+                        <td></td>
+                        <td>
+                           <button  type="submit" id="btnA" ng-click="getFormDetails()" ng-disabled="userForm.$invalid">Save</button>
+                           <button id="btnB" ng-click="isActive = true">Activate</button>
+                        </td>
+                     </tr>
+                  </form>
+                  <tr ng-repeat="detail in details | filter:nameFilter | startFrom:currentPage*pageSize | limitTo:pageSize" id={{'row-'+$index}}>
+                     <td>{{detail.lastName}}</td>
+                     <td>{{detail.firstName}}</td>
+                     <td>{{detail.age}}</td>
+                     <td>{{detail.email}}</td>
+                     <td>
+                        <div>{{detail.createdDate}}</div>
+                        <div>{{detail.time}}</div>
+                     </td>
+                     <td>
+                        <div>{{detail.editedDate}}</div>
+                        <div>{{detail.time}}</div>
+                     </td>
+                     <td>
+                        <button id="active" + {{detail.lastName}} ng-click="isActive = false" ng-show="isActive">Active</button>
+                        <button id={{'edit-'+$index}} ng-click="editRow($index)" ng-show="showEditableRow">Edit</button>
+                        <button id={{'delete-'+$index}} ng-click="deleteRow(detail.email)">Delete</button>
+                     </td>
+                  </tr>
+               </thead>
+            </table>
+         </div>
+      </div>
+
+      <script>
+         var initialModule = angular.module("myapp", ["ngStorage"]);
+         
+         initialModule.controller("AppController", function($scope, $localStorage) {
+            $scope.title = "User List";
+            $scope.details = [];
+            $scope.isFormDisplayed = false;
+            $scope.showTable = false;
+
+            $scope.currentUser = 0;
+            $scope.currentPage = 0;
+            $scope.pageSize = 10;
+            $scope.isActive = false;
+
+            $scope.numberOfPages = function(){
+               return Math.ceil($scope.details.length/$scope.pageSize);
+            }
+
+            $scope.addUser = function() {
+               $scope.showTable = true;
+               $scope.isFormDisplayed = true
+            }
+
+            $scope.editRow = function(element) {
+               $scope.showEditableRow = false;
+               $scope.isFormDisplayed = true;
+            }
+
+            $scope.deleteRow = function(element) {
+               var index = -1;
+               $scope.details.filter(function(item, idx){
+                  if(item.email === element){
+                     index = idx;
+                  }
+               });
+               $scope.details.splice(index, 1);
+               if (details.length < 1) {
+                  $scope.isFormDisplayed = false;
+               }
+            }
+
+            $scope.showNextPage = function() {
+               return $scope.details.length && ($scope.currentPage !== $scope.numberOfPages - 1) && $scope.numberOfPages > 1;
+            }
+
+            function checkForDuplicates(email) {
+               return $scope.details.some(function(item){
+                  return item.email === email;
+               });
+            }
+
+            $scope.getFormDetails = function() {
+               var date = new Date();
+               var formattedDate = (date.getMonth() + 1 + '/' + date.getDate() + '/' + date.getFullYear());
+               var formattedTime = (date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds()); 
+               var userFormDetails = {
+                  lastName: $scope.lastName,
+                  firstName: $scope.firstName,
+                  age: $scope.age,
+                  email: $scope.email,
+                  createdDate: formattedDate,
+                  editedDate: formattedDate ,
+                  time: formattedTime
+               }
+               if ($scope.lastName && $scope.firstName && $scope.email) {
+                  if (!checkForDuplicate($scope.email)) {
+                     $scope.details.push(userFormDetails);
+                     $scope.currentUser++;
+                     $scope.isFormDisplayed = false;
+                     localStorage.users = $scope.details;
+                  }
+                  else {
+                     alert ("User already exists, Cannot add the User");
+                  }
+                  
+               }
+            }
+
+            $scope.sortRow = function(column){
+               $scope.sortKey = column;
+               $scope.reverse = !$scope.reverse; 
+            }
+         });
+
+         initialModule.filter('startFrom', function() {
+             return function(input, start) {
+                 start = +start;
+                 return input.slice(start);
+             }
+         });
+
+      </script>
+      
+   </body>
+</html>
